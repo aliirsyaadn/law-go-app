@@ -3,11 +3,14 @@ package main
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"html/template"
 	"io/ioutil"
+	"log"
 	"net/http"
+	"os"
 	"strconv"
+
+	"github.com/joho/godotenv"
 )
 
 type CalculatorRequest struct {
@@ -25,6 +28,8 @@ type CalculatorResponse struct {
 type ErrorResp struct {
 	Error string
 }
+
+var apiEndPoint string
 
 func ErrorRespWrap(w http.ResponseWriter, error string, code int) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -63,7 +68,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
         b, _ := strconv.ParseFloat(r.FormValue("b"), 64)
 		operation := r.Form.Get("operation")
 
-		fmt.Printf("%v %v %v\n", a,b,operation)
 
 		req := CalculatorRequest{
 			A:a,
@@ -73,17 +77,13 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
         reqJson, err := json.Marshal(req)
 
-		fmt.Printf("%v \n", reqJson)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		resp, err := http.Post("http://127.0.0.1:8000", "application/json", bytes.NewBuffer(reqJson))
-
-		fmt.Printf("%v \n", resp.Body)
-		fmt.Printf("%v \n", resp.StatusCode)
+		resp, err := http.Post(apiEndPoint, "application/json", bytes.NewBuffer(reqJson))
 
 		if resp.StatusCode == 400 {
 			ErrorRespWrap(w, "Bad Request", 400)
@@ -104,12 +104,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		fmt.Println(string(body))
-
 		var respData CalculatorResponse
 		err = json.Unmarshal(body, &respData)
 
-		fmt.Println(respData)
 
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -128,8 +125,24 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 
 func main() {
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "9000"
+	}
+
+	apiEndPoint = os.Getenv("API_ENDPOINT")
+	if apiEndPoint == "" {
+		port = "http://localhost:8000"
+	}
+
     http.HandleFunc("/", handler)
 
-    fmt.Println("Server started on Port 9000")
-    http.ListenAndServe(":9000", nil)
+    log.Println("Server Started on Port "+port)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
