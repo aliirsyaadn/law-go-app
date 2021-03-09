@@ -4,8 +4,10 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/gorilla/mux"
+	"github.com/joho/godotenv"
 )
 
 type Math struct {
@@ -148,6 +150,17 @@ func div(w http.ResponseWriter, r *http.Request) {
 
 // Main function
 func main() {
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "9000"
+	}
+
 	// Init router
 	r := mux.NewRouter()
 	r.HandleFunc("/", all).Methods("POST")
@@ -157,6 +170,6 @@ func main() {
 	r.HandleFunc("/div", div).Methods("POST")
 
 	// Start server
-	log.Println("Server Started on Port 8000")
-	log.Fatal(http.ListenAndServe(":8000", r))
+	log.Println("Server Started on Port "+port)
+	log.Fatal(http.ListenAndServe(":"+port, r))
 }
